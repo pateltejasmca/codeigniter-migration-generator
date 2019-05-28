@@ -1,27 +1,22 @@
 <?php
-
 /**
- * User: Ian Jiang
- * Date: 2016/10/29
+ * User: Tejas Patel
+ * Date: 2019-05-28
  */
-
 class Migration_lib
 {
     /**
      * @var object $_ci codeigniter
      */
     private $_ci = NULL;
-
     /**
      * @var string migration folder name
      */
     private $_migration_folder_name = 'migrations';
-
     /**
      * @var array collect used timestamp
      */
     private $_timestamp_set = array();
-
     /**
      * @var array migration table set
      */
@@ -30,24 +25,18 @@ class Migration_lib
      * @var string path
      */
     protected $path = '';
-
     /**
      * @var array skip table name set
      */
     protected $skip_tables = ['migrations'];
-
     /**
      * @var bool add view
      */
     protected $add_view = FALSE;
-
-
     /**
      * @var string database name
      */
     private $_db_name = '';
-
-
     /**
      * Migration_lib constructor.
      */
@@ -58,12 +47,9 @@ class Migration_lib
         {
             $this->_ci =& get_instance();
         }
-
         $this->path = APPPATH . $this->_migration_folder_name;
-
         $this->_ci->load->database();
     }
-
     /**
      * Generate Migrations Files
      *
@@ -79,72 +65,58 @@ class Migration_lib
             echo 'InvalidParameter::tables';
             return FALSE;
         }
-
         // get database name
         $this->_db_name = $this->_ci->db->database;
-
         if ($tables === '*')
         {
             $query = $this->_ci->db->query('SHOW FULL TABLES FROM ' . $this->_ci->db->protect_identifiers($this->_db_name));
-
             // collect tables of migration
             $migration_table_set = array();
-
             // confirm table num
             if ($query->num_rows() > 0)
             {
                 $table_name_key = "Tables_in_{$this->_db_name}";
-
                 foreach ($query->result_array() as $table_info)
                 {
                     if (isset($table_info[$table_name_key]) && $table_info[$table_name_key] !== '')
                     {
                         $table_name = $table_info[$table_name_key];
-
                         // check if table in skip arrays, if so, go next
                         if (in_array($table_info[$table_name_key], $this->skip_tables))
                         {
                             continue;
                         }
-
                         // skip views
                         if (strtolower($table_info['Table_type']) == 'view')
                         {
                             continue;
                         }
-
                         $migration_table_set[] = $table_info["Tables_in_{$this->_db_name}"];
                     }
                 }
             }
-
             if($this->_ci->db->dbprefix($this->_db_name) !== '')
             {
                 array_walk($migration_table_set, [$this, '_remove_database_prefix']);
             }
-
             $this->migration_table_set = $migration_table_set;
         }
         else
         {
             $this->migration_table_set = is_array($tables) ? $tables : explode(',', $tables);
         }
-
-
         if( ! empty($this->migration_table_set))
         {
             // create migration file or override it.
             foreach ($this->migration_table_set as $table_name)
             {
                 $file_content = $this->get_file_content($table_name);
-
                 if(! empty($file_content))
                 {
                     $this->write_file($table_name, $file_content);
                     continue;
                 }
             }
-
             echo "Create migration success!";
             return TRUE;
         }
@@ -154,7 +126,6 @@ class Migration_lib
             return FALSE;
         }
     }
-
     /**
      * _remove_database_prefix
      *
@@ -167,7 +138,6 @@ class Migration_lib
         // insensitive replace
         $table_name = str_ireplace($this->_ci->db->dbprefix, '', $table_name);
     }
-
     /**
      * get_file_content
      *
@@ -184,13 +154,10 @@ class Migration_lib
         $file_content .= $this->get_function_up_content($table_name);
         $file_content .= $this->get_function_down_content($table_name);
         $file_content .= "\n" . '}' . "\n";
-
         // replace tab into 4 space
         $file_content = str_replace("\t", '    ', $file_content);
-
         return $file_content;
     }
-
     /**
      * writeFile
      *
@@ -205,7 +172,6 @@ class Migration_lib
         fwrite($file, $file_content);
         fclose($file);
     }
-
     /**
      * openFile
      *
@@ -216,25 +182,19 @@ class Migration_lib
     public function open_file($table_name)
     {
         $timestamp = $this->_get_timestamp($table_name);
-
         $file_path = $this->path . '/' . $timestamp .'_create_' . $table_name . '.php';
-
         // Open for reading and writing.
         // Place the file pointer at the beginning of the file and truncate the file to zero length.
         // If the file does not exist, attempt to create it.
         $file = fopen($file_path, 'w+');
-
         if ( ! $file)
         {
             return FALSE;
         }
-
         // add this timestamp to timestamp ser
         $this->_timestamp_set[] = $timestamp;
-
         return $file;
     }
-
     /**
      * _get_timestamp get
      *
@@ -245,19 +205,14 @@ class Migration_lib
     {
         // get timestamp
         $query = $this->_ci->db->query(' SHOW TABLE STATUS WHERE Name = \'' . $table_name .'\'');
-
         $engines = $query->row_array();
-
         $timestamp = date('YmdHis', strtotime($engines['Create_time']));
-
         while(in_array($timestamp, $this->_timestamp_set))
         {
             $timestamp += 1;
         }
-
         return $timestamp;
     }
-
     /**
      * Base on table name create migration up function
      *
@@ -272,38 +227,36 @@ class Migration_lib
         $str .= "\t" . ' *' . "\n";
         $str .= "\t" . ' * @return void' . "\n";
         $str .= "\t" . ' */' . "\n";
-
         $str .= "\t" . 'public function up()' . "\n";
         $str .= "\t" . '{' . "\n";
-
         $query = $this->_ci->db->query("SHOW FULL FIELDS FROM {$this->_ci->db->dbprefix($table_name)} FROM {$this->_db_name}");
-
-        // 如果没有结果，直接返回
+        // If there is no result, return directly
         if ($query->result() === NULL)
         {
             return FALSE;
         }
-
-        $columns = $query->result_array();//获取列数据
-
+        $columns = $query->result_array();//Get column data
         $add_key_str = '';
-
         $add_field_str = "\t\t" . '$this->dbforge->add_field(array(' . "\n";
-
+		$added_keys = array();
         foreach ($columns as $column)
         {
-            // field name
+			/* echo "<pre>";
+			print_r($column);
+			echo "</pre>"; */
+			// field name
             $add_field_str .= "\t\t\t'{$column['Field']}' => array(" . "\n";
-
             preg_match('/^(\w+)\(([\d]+(?:,[\d]+)*)\)/', $column['Type'], $match);
-
             if($match === [])
             {
                 preg_match('/^(\w+)/', $column['Type'], $match);
             }
-
-            $add_field_str .= "\t\t\t\t'type' => '" . strtoupper($match[1]) . "'," . "\n";
-
+            
+			if($match[1] == 'ENUM' || $match[1] == 'enum'){				
+				$match[1] = str_replace("'",'"',$column['Type']);
+			}
+			
+			$add_field_str .= "\t\t\t\t'type' => '" . strtoupper($match[1]) . "'," . "\n";
             if(isset($match[2]))
             {
                 switch (strtoupper($match[1]))
@@ -318,52 +271,59 @@ class Migration_lib
                         break;
                 }
             }
-
             $add_field_str .= (strstr($column['Type'], 'unsigned')) ? "\t\t\t\t'unsigned' => TRUE," . "\n" : '';
-
             $add_field_str .= ((string) $column['Default'] !== '') ? "\t\t\t\t'default' => '" . $column['Default'] . "'," . "\n" : '';
-
             $add_field_str .= ((string) $column['Comment'] !== '') ? "\t\t\t\t'comment' => '" . str_replace("'", "\\'", $column['Comment']) . "',\n" : '';
-
             $add_field_str .= ($column['Null'] !== 'NO') ? "\t\t\t\t'null' => TRUE," . "\n" : '';
-
+            $add_field_str .= ($column['Extra'] == 'auto_increment') ? "\t\t\t\t'auto_increment' => TRUE," . "\n" : '';
+            $add_field_str .= ($column['Collation'] != '') ? "\t\t\t\t'collation' => '".$column['Collation']."'," . "\n" : '';
             $add_field_str .= "\t\t\t)," . "\n";
-
             if ($column['Key'] == 'PRI')
             {
                 $add_key_str .= "\t\t" . '$this->dbforge->add_key("' . $column['Field'] . '", TRUE);' . "\n";
+				$added_keys[] = $column['Field'];
             }
         }
-
         $add_field_str .= "\t\t));" . "\n";
-
         $str .= "\n\t\t" . '// Add Fields.' . "\n";
         $str .= $add_field_str;
-
         $str .= ($add_key_str !== '') ? "\n\t\t" . '// Add Primary Key.' . "\n" . $add_key_str : '';
-
+		
+		
+		/* Add Extra Keys */		
+		$query = $this->_ci->db->query("SHOW KEYS FROM $table_name WHERE Key_name != 'PRIMARY'");
+		if ($query->result() !== NULL)
+        {
+			$columns = $query->result_array();//Get column data   
+			foreach ($columns as $column){
+				if(!in_array($column['Key_name'],$added_keys)){
+					$str .= "\t\t" . '$this->dbforge->add_key("' . $column['Key_name'] . '");' . "\n";
+					$added_keys[] = $column['Key_name'];
+				}
+			}
+        }
+        /* END Extra Keys */
+		
+		
         // create db
-
+		/* echo ' SHOW TABLE STATUS WHERE Name = \'' . $table_name . '\''; */
         $query = $this->_ci->db->query(' SHOW TABLE STATUS WHERE Name = \'' . $table_name . '\'');
-
         $engines = $query->row_array();
-
+		/* echo "<pre>";
+		print_r($engines);
+		echo "</pre>"; */
         $attributes_str = "\n\t\t" . '$attributes = array(' . "\n";;
         $attributes_str .= ((string) $engines['Engine'] !== '') ? "\t\t\t'ENGINE' => '" . $engines['Engine'] . "'," . "\n" : '';
         $attributes_str .= ((string) $engines['Comment'] !== '') ? "\t\t\t'COMMENT' => '\\'" . str_replace("'", "\\'", $engines['Comment']) . "'\\'',\n" : '';
+        $attributes_str .= ((string) $engines['Collation'] !== '') ? "\t\t\t'COLLATE' => '" . $engines['Collation'] . "',\n" : '';
         $attributes_str .= "\t\t" . ');' . "\n";
-
         $str .= "\n\t\t" . '// Table attributes.' . "\n";
         $str .= $attributes_str;
-
         $str .= "\n\t\t" . '// Create Table ' . $table_name . "\n";
         $str .= "\t\t" . '$this->dbforge->create_table("' . $table_name . '", TRUE, $attributes);' . "\n";
-
         $str .= "\n\t" . '}' . "\n";
-
         return $str;
     }
-
     /**
      * Base on table name create migration down function
      *
@@ -378,13 +338,11 @@ class Migration_lib
         $function_content .= "\t" . ' *' . "\n";
         $function_content .= "\t" . ' * @return void' . "\n";
         $function_content .= "\t" . ' */' . "\n";
-
         $function_content .= "\t" . 'public function down()' . "\n";
         $function_content .= "\t" . '{' . "\n";
         $function_content .= "\t\t" . '// Drop table ' . $table_name . "\n";
         $function_content .= "\t\t" . '$this->dbforge->drop_table("' . $table_name . '", TRUE);' . "\n";
         $function_content .= "\t" . '}' . "\n";
-
         return $function_content;
     }
 }
